@@ -77,6 +77,7 @@ defmodule ExOauth2Provider.AccessGrants.AccessGrant do
   end
 
   @spec put_token(Ecto.Changeset.t()) :: Ecto.Changeset.t()
+  def put_token(%{changes: %{token: _}} = changeset), do: changeset
   def put_token(changeset) do
     Changeset.put_change(changeset, :token, Utils.generate_token())
   end

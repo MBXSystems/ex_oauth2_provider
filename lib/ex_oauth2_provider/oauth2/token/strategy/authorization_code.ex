@@ -37,8 +37,14 @@ defmodule ExOauth2Provider.Token.AuthorizationCode do
   end
 
   defp issue_access_token_by_grant({:error, params}, _config), do: {:error, params}
-  defp issue_access_token_by_grant({:ok, %{access_grant: access_grant, request: _} = params}, config) do
-    token_params = %{use_refresh_token: Config.use_refresh_token?(config)}
+  defp issue_access_token_by_grant({:ok, %{access_grant: access_grant, request: %{} = request} = params}, config) do
+    token_params =
+      request
+      |> Map.to_list()
+      |> Enum.filter(fn {k, _v} -> is_atom(k) end)
+      |> Map.new()
+      |> Map.put(:use_refresh_token, Config.use_refresh_token?(config))
+      |> Map.put(:access_grant, access_grant)
 
     result = Config.repo(config).transaction(fn ->
       access_grant

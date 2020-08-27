@@ -196,8 +196,22 @@ defmodule ExOauth2Provider.AccessTokens do
     attrs = Map.merge(%{expires_in: Config.access_token_expires_in(config)}, attrs)
 
     access_token
-    |> AccessToken.changeset(attrs, config)
+    |> token_changeset(attrs, config)
     |> Config.repo(config).insert()
+  end
+
+  defp token_changeset(token, attrs, config) do
+    access_token_module = Config.access_token(config)
+
+    access_token_module
+    |> Kernel.function_exported?(:changeset, 3)
+    |> case do
+      true ->
+        apply(access_token_module, :changeset, [token, attrs, config])
+
+      _ ->
+        AccessToken.changeset(token, attrs, config)
+    end
   end
 
   @doc """

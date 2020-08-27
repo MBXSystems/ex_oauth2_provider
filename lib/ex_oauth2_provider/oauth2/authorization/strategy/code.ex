@@ -142,12 +142,16 @@ defmodule ExOauth2Provider.Authorization.Code do
   defp issue_grant({:ok, %{resource_owner: resource_owner, client: application, request: request} = params}, config) do
     grant_params =
       request
-      |> Map.take(["redirect_uri", "scope"])
-      |> Map.new(fn {k, v} ->
-        case k do
-          "scope" -> {:scopes, v}
-          _       -> {String.to_atom(k), v}
-        end
+      |> Map.to_list()
+      |> Enum.filter(fn
+        {k, _v} when is_bitstring(k) -> k in ["scope", "redirect_uri"]
+        {k, _v} when is_atom(k) -> true
+        _ -> false
+      end)
+      |> Map.new(fn
+        {"scope", v} -> {:scopes, v}
+        {k, v} when is_bitstring(k) -> {String.to_atom(k), v}
+        {k, v} when is_atom(k) -> {k, v}
       end)
       |> Map.put(:expires_in, Config.authorization_code_expires_in(config))
 

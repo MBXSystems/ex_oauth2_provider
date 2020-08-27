@@ -71,7 +71,7 @@ defmodule ExOauth2Provider.AccessTokens.AccessToken do
     server_scopes = server_scopes(token)
 
     token
-    |> Changeset.cast(params, [:expires_in, :scopes])
+    |> Changeset.cast(params, [:expires_in, :refresh_token, :token, :scopes])
     |> validate_application_or_resource_owner()
     |> put_previous_refresh_token(params[:previous_refresh_token])
     |> put_refresh_token(params[:use_refresh_token])
@@ -110,9 +110,17 @@ defmodule ExOauth2Provider.AccessTokens.AccessToken do
     |> Changeset.assoc_constraint(:resource_owner)
   end
 
+  defp put_token(%{changes: %{token: token}} = changeset, _config) when is_bitstring(token),
+    do: put_token_constraints(changeset)
+
   defp put_token(changeset, config) do
     changeset
     |> Changeset.change(%{token: gen_token(changeset, config)})
+    |> put_token_constraints()
+  end
+
+  defp put_token_constraints(changeset) do
+    changeset
     |> Changeset.validate_required([:token])
     |> Changeset.unique_constraint(:token)
   end
@@ -142,10 +150,17 @@ defmodule ExOauth2Provider.AccessTokens.AccessToken do
   defp put_previous_refresh_token(changeset, refresh_token),
     do: Changeset.change(changeset, %{previous_refresh_token: refresh_token.refresh_token})
 
+  defp put_refresh_token(%{changes: %{refresh_token: _}} = changeset, true) do
+    put_refresh_token_constraints(changeset)
+  end
+
   defp put_refresh_token(changeset, true) do
     changeset
     |> Changeset.change(%{refresh_token: Utils.generate_token()})
-    |> Changeset.validate_required([:refresh_token])
+    |> put_refresh_token_constraints()
   end
   defp put_refresh_token(changeset, _), do: changeset
+
+  defp put_refresh_token_constraints(changeset),
+    do: changeset |> Changeset.validate_required([:refresh_token])
 end

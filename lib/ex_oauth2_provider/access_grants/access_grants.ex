@@ -47,7 +47,21 @@ defmodule ExOauth2Provider.AccessGrants do
     config
     |> Config.access_grant()
     |> struct(resource_owner: resource_owner, application: application)
-    |> AccessGrant.changeset(attrs, config)
+    |> grant_changeset(attrs, config)
     |> Config.repo(config).insert()
+  end
+
+  defp grant_changeset(grant, attrs, config) do
+    access_grant_module = Config.access_grant(config)
+
+    access_grant_module
+    |> Kernel.function_exported?(:changeset, 3)
+    |> case do
+      true ->
+        apply(access_grant_module, :changeset, [grant, attrs, config])
+
+      _ ->
+        AccessGrant.changeset(grant, attrs, config)
+    end
   end
 end

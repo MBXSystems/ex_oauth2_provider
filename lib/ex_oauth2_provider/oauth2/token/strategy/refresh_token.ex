@@ -49,9 +49,9 @@ defmodule ExOauth2Provider.Token.RefreshToken do
   defp load_access_token_by_refresh_token(params, _config), do: Error.add_error(params, Error.invalid_request())
 
   defp issue_access_token_by_refresh_token({:error, params}, _config), do: {:error, params}
-  defp issue_access_token_by_refresh_token({:ok, %{refresh_token: refresh_token, request: _} = params}, config) do
+  defp issue_access_token_by_refresh_token({:ok, %{refresh_token: refresh_token, request: %{} = request} = params}, config) do
     result = Config.repo(config).transaction(fn ->
-      token_params = token_params(refresh_token, config)
+      token_params = token_params(refresh_token, request, config)
 
       refresh_token
       |> revoke_access_token(config)
@@ -68,8 +68,15 @@ defmodule ExOauth2Provider.Token.RefreshToken do
     end
   end
 
-  defp token_params(%{scopes: scopes, application: application} = refresh_token, config) do
-    params = %{scopes: scopes, application: application, use_refresh_token: true}
+  defp token_params(%{scopes: scopes, application: application} = refresh_token, %{} = request, config) do
+    params =
+      request
+      |> Map.to_list()
+      |> Enum.filter(fn {k, _v} -> is_atom(k) end)
+      |> Map.new()
+      |> Map.put(:use_refresh_token, true)
+      |> Map.put(:scopes, scopes)
+      |> Map.put(:appliication, application)
 
     case Config.refresh_token_revoked_on_use?(config) do
       true  -> Map.put(params, :previous_refresh_token, refresh_token)

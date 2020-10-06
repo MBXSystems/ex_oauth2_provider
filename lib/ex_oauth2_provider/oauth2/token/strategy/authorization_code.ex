@@ -49,7 +49,7 @@ defmodule ExOauth2Provider.Token.AuthorizationCode do
     result = Config.repo(config).transaction(fn ->
       access_grant
       |> revoke_grant(config)
-      |> maybe_create_access_token(token_params, config)
+      |> maybe_create_access_token(token_params, config, Config.reuse_access_token?(config))
     end)
 
     case result do
@@ -62,8 +62,12 @@ defmodule ExOauth2Provider.Token.AuthorizationCode do
   defp revoke_grant(%{revoked_at: nil} = access_grant, config),
     do: AccessGrants.revoke(access_grant, config)
 
-  defp maybe_create_access_token({:error, _} = error, _token_params, _config), do: error
-  defp maybe_create_access_token({:ok, %{resource_owner: resource_owner, application: application, scopes: scopes}}, token_params, config) do
+  defp maybe_create_access_token({:error, _} = error, _token_params, _config, _reuse_token), do: error
+
+  defp maybe_create_access_token(
+      {:ok, %{resource_owner: resource_owner, application: application, scopes: scopes}},
+      token_params, config,
+      true = _reuse_access_token) do
     token_params = Map.merge(token_params, %{scopes: scopes, application: application})
 
     resource_owner
@@ -72,6 +76,16 @@ defmodule ExOauth2Provider.Token.AuthorizationCode do
       nil          -> AccessTokens.create_token(resource_owner, token_params, config)
       access_token -> {:ok, access_token}
     end
+  end
+
+  defp maybe_create_access_token(
+      {:ok, %{resource_owner: resource_owner, application: application, scopes: scopes}},
+      token_params, config,
+      false = _reuse_access_token) do
+    token_params = Map.merge(token_params, %{scopes: scopes, application: application})
+
+    resource_owner
+    |> AccessTokens.create_token(token_params, config)
   end
 
   defp load_active_access_grant({:ok, %{client: client, request: %{"code" => code}} = params}, config) do

@@ -100,6 +100,12 @@ defmodule ExOauth2Provider.Config do
   def use_refresh_token?(config),
     do: get(config, :use_refresh_token, false)
 
+  # Whether or not to reuse an access token, if a valid one exists already for the current scope
+  # resource owner and application.
+  @spec reuse_access_token?(keyword()) :: boolean()
+  def reuse_access_token?(config),
+    do: get(config, :reuse_access_token, false)
+
   # Password auth method to use. Disabled by default. When set, it'll enable
   # password auth strategy. Set config as:
   # `password_auth: {MyModule, :my_auth_method}`
